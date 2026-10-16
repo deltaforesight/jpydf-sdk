@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "kind": "jpydf-public-deployment-descriptor",
+  "chainId": 1,
+  "deploymentId": "jpydf-production-candidate",
+  "deploymentClassification": "PRODUCTION_CANDIDATE",
+  "deploymentProfile": "production-candidate",
+  "sourceManifestSha256": "ac28e506b373762d67d6de2c3139f7c6fd95853fdd02aa0a328a3629a3747fd7",
+  "jpydfToken": "0xB122f4A154f84708407213D6A715181180012f45",
+  "collateralRegistry": "0x9bD92516f419965dA7F3670acA5D070F9721E319",
+  "hintHelpers": "0xD0a22f9c3e4133a148A424a4aae27f784f911e23",
+  "liquidationCandidateGetter": "0x934a4BE61773a8DF43C96FE3D2bAa70953cDb0BA",
+  "protocolConstants": {
+    "minDebt": "100000000000000000000000",
+    "ethGasCompensation": "37500000000000000",
+    "stabilityPoolYieldShare": "750000000000000000",
+    "minAnnualInterestRate": "5000000000000000",
+    "maxAnnualInterestRate": "2500000000000000000"
+  },
+  "branches": [
+    {
+      "branchId": 0,
+      "collSymbol": "dwstETH",
+      "addressesRegistry": "0xF30dCe7FD7bCcCd31Ae13Eab29aeC7dAcF1B31C4",
+      "activePool": "0xcdC86E2b6ba7Ec314b96aAdAF6C1D65e1b63BC24",
+      "borrowerOperations": "0xc86fA8E125285Da96C1a0820B69EFc0d670752Cf",
+      "collateralVault": "0x6042755eCCa71A1Be9C7091441ca5bEaA6b520e4",
+      "collateralYieldZapper": "0x8C729Aa2D45948fEe4dCAc246c2792091B8A05d7",
+      "dToken": "0xB1f83c8E22F8644858c99675260c642403faE85c",
+      "jpyUsdRateProvider": "0x11C2Fa2e43634DA8Cd079500C793dAfaD0488a89",
+      "priceFeed": "0x8D1bB1cB05f8c09A177946a1c12c578e313058fE",
+      "sortedTroves": "0xb0B1a884998000922B8F327b39E224B555907dd3",
+      "stabilityPool": "0x040BeC45A24afcC3Fe35e0230c1fA6db772c0B4e",
+      "troveManager": "0x77C43f2636d12861d1c1A9E986e1344dE66326d3",
+      "troveNFT": "0x47f6f01EF45988D8ed461E3BabD391D9Ed00AD66",
+      "underlyingToken": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0"
+    },
+    {
+      "branchId": 1,
+      "collSymbol": "dUSDC",
+      "addressesRegistry": "0xbdDA51EBfBcF517e951B3775E0d7b550Eaf86e64",
+      "activePool": "0x23e7582cC75c10bCe92AdBb6FB4909747f6282B8",
+      "borrowerOperations": "0xC2410F608F0D5f76541cE777Ef8F18693F566E85",
+      "collateralVault": "0x087Ebaf3F1b094b2046912a5E5F0BaD78dF3eAa7",
+      "collateralYieldZapper": "0x24012105a65f9c440e422F8A48DF157D7236E18A",
+      "dToken": "0x01Dd27d3422DF99a56C60945E561243A8027262c",
+      "jpyUsdRateProvider": "0x11C2Fa2e43634DA8Cd079500C793dAfaD0488a89",
+      "priceFeed": "0xaD0595534139016fCccaE5C080cbF1Ce28a4AD79",
+      "sortedTroves": "0x9EDd51a03c6FFc336A8Dba435bD055cf741b6420",
+      "stabilityPool": "0x4eAC642110b81192f1065F240c5B425c336F43aF",
+      "troveManager": "0xD95924A5368d1C1DaFCd6B7753D4ac333661B68a",
+      "troveNFT": "0x5e5743D8b07e4f5724f5b29A3A84FD56B1aF4f71",
+      "underlyingToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    }
+  ],
+  "uniswapV4": {
+    "poolManager": "0x000000000004444c5dc75cB358380D2e3dE08A90",
+    "positionManager": "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e",
+    "stateView": "0x7fFE42C4a5DEeA5b0feC41C94C136Cf115597227",
+    "quoter": "0x52F0E24D1c21C8A0cB1e5a5dD6198556BD9E1203",
+    "universalRouter": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+    "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    "poolKey": {
+      "currency0": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "currency1": "0xB122f4A154f84708407213D6A715181180012f45",
+      "fee": 500,
+      "tickSpacing": 10,
+      "hooks": "0x0000000000000000000000000000000000000000"
+    },
+    "poolId": "0x09a7a021c3bee7bb98ce64e17f060968ed0c95c4dde5a7136511bebf1c6a8370"
+  }
+}

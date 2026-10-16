@@ -1,0 +1,43 @@
+# Publishes @jpydf/sdk from an exact version tag of this generated mirror (SDK-GOV-002 §2).
+# npm trusted publishing (OIDC) with provenance; no npm token is stored. The npm-publish
+# environment must require a human reviewer.
+name: Publish @jpydf/sdk
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Require the tag, version and release state to match
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./package.json").version')"
+          test "${GITHUB_REF_NAME}" = "v${version}" || { echo "::error::tag ${GITHUB_REF_NAME} is not v${version}"; exit 1; }
+          test "$(node -p 'require("./package.json").private === true')" = "false" \
+            || { echo "::error::package.json is private: SDK-GOV-002 is not met"; exit 1; }
+          case "$version" in 0.*) ;; *) echo "::error::only 0.x previews are approved"; exit 1 ;; esac
+
+      - name: Install, test and check the release boundary
+        run: npm ci && npm test
+
+      - name: Publish the preview
+        run: |
+          npm install -g npm@11
+          npm publish --provenance --access public --tag preview
