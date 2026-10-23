@@ -55,6 +55,7 @@ const allowedUrls = new Set([
   "https://github.com/deltaforesight/jpydf-sdk.git",
   "https://github.com/deltaforesight/jpydf-sdk/issues",
   "https://github.com/deltaforesight/jpydf-sdk/security/policy",
+  "https://github.com/deltaforesight/jpydf-sdk/security/advisories/new",
 ]);
 const urls = body.match(/https?:\/\/[^\s"'<>)]+/g) ?? [];
 if (urls.some((url) => !allowedUrls.has(url))) {

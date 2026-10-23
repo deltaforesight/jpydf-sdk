@@ -41,10 +41,12 @@ refuses while the package is still `private`.
 
 ## Security and support
 
-For confidential vulnerability reports, follow the
-[security policy](https://github.com/deltaforesight/jpydf-sdk/security/policy).
-For SDK integration questions and non-sensitive bugs, use
-[SDK issues](https://github.com/deltaforesight/jpydf-sdk/issues).
+Report suspected SDK vulnerabilities through
+[GitHub Private Vulnerability Reporting](https://github.com/deltaforesight/jpydf-sdk/security/advisories/new).
+See the [security policy](https://github.com/deltaforesight/jpydf-sdk/security/policy)
+for reporting requirements and the supported alpha version scope.
+Use [SDK issues](https://github.com/deltaforesight/jpydf-sdk/issues)
+for integration questions and non-sensitive bugs.
 
 ## Current feature boundary
 
