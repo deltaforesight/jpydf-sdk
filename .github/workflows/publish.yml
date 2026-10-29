@@ -107,7 +107,8 @@ jobs:
         env:
           # npm tries OIDC first; the token is only used before trusted publishing exists.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
-          TARBALL: release/${{ needs.pack.outputs.tarball }}
+          # The ./ prefix keeps npm from reading release/<file> as a GitHub user/repo shorthand.
+          TARBALL: ./release/${{ needs.pack.outputs.tarball }}
           EXPECTED_SHA256: ${{ needs.pack.outputs.sha256 }}
         run: |
           set -euo pipefail
