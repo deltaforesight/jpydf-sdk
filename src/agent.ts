@@ -1,6 +1,7 @@
-import { type Address, BaseError, getAddress, isAddress, zeroAddress } from "viem";
+import { type Address, BaseError, getAddress, isAddress, type PublicClient, zeroAddress } from "viem";
 
 import { createJpydfClient } from "./client.js";
+import { getJpydfUsdcPool, quoteJpydfUsdc, type JpydfMarketToken, type JpydfUsdcPoolState, type JpydfUsdcQuote } from "./production-market.js";
 import { JpydfSdkError, type JpydfSdkErrorCode } from "./errors.js";
 import {
   assertJpydfDeadlinePublicClient,
@@ -69,6 +70,20 @@ const liquidationInputSchema = deepFreeze({
   required: ["branchId", "maxIterations", "startId"],
 } as const);
 
+const quoteInputSchema = deepFreeze({
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    tokenIn: { type: "string", enum: ["USDC", "JPYdf"] },
+    amountRaw: {
+      type: "string",
+      pattern: "^[1-9][0-9]{0,38}$",
+      description: "Base-unit integer string of tokenIn: USDC has 6 decimals, JPYdf has 18",
+    },
+  },
+  required: ["tokenIn", "amountRaw"],
+} as const);
+
 const AGENT_OPERATION_CATALOG = deepFreeze([
   {
     id: "integration.get",
@@ -93,6 +108,18 @@ const AGENT_OPERATION_CATALOG = deepFreeze([
     kind: "read",
     description: "Read fixed-block borrow, earn, vault, oracle, and risk rates",
     inputSchema: branchInputSchema,
+  },
+  {
+    id: "jpydfUsdc.pool",
+    kind: "read",
+    description: "Production only: read the JPYdf/USDC Uniswap v4 pool state; the pool price is the JPYdf market price, not the ¥1 reference",
+    inputSchema: emptyInputSchema,
+  },
+  {
+    id: "jpydfUsdc.quote",
+    kind: "read",
+    description: "Production only: quote an exact-input JPYdf/USDC swap (fee and price impact included); returns no calldata",
+    inputSchema: quoteInputSchema,
   },
   {
     id: "liquidation.scan",
@@ -140,6 +167,8 @@ export type JpydfAgentRewardMode = "claim" | "compound";
 export type JpydfAgentRequest =
   | { operation: "integration.get" | "protocol.get" | "account.get"; input: Record<string, never> }
   | { operation: "market.get"; input: { branchId: number } }
+  | { operation: "jpydfUsdc.pool"; input: Record<string, never> }
+  | { operation: "jpydfUsdc.quote"; input: { tokenIn: JpydfMarketToken; amountRaw: string } }
   | {
     operation: "liquidation.scan";
     input: { branchId: number; maxIterations: number; startId: string };
@@ -180,6 +209,8 @@ export type JpydfAgentDataByOperation = {
   "protocol.get": Jsonified<JpydfProtocolSnapshot>;
   "account.get": Jsonified<JpydfAccountSnapshot>;
   "market.get": Jsonified<JpydfMarketSnapshot>;
+  "jpydfUsdc.pool": Jsonified<JpydfUsdcPoolState>;
+  "jpydfUsdc.quote": Jsonified<JpydfUsdcQuote>;
   "liquidation.scan": Jsonified<JpydfLiquidationPage>;
   "earn.deposit": Jsonified<AgentPreparedAction>;
   "earn.withdraw": Jsonified<AgentPreparedAction>;
@@ -191,7 +222,7 @@ type AgentResponseOperationId = keyof JpydfAgentDataByOperation;
 type AgentIdentity = {
   schemaVersion: "1";
   environment: JpydfDeploymentScope;
-  testOnly: true;
+  testOnly: boolean;
   chainId: 1;
   deploymentClassification: string;
   deploymentId: string;
@@ -389,9 +420,19 @@ export function createJpydfMainnetStagingAgentClient(
   return Object.freeze(readOnly);
 }
 
+// Production agent sessions are read-only (SDK-FR-007): no write admission or host finalization.
+export function createJpydfProductionAgentClient(
+  options: Omit<AgentClientOptions, "scope" | "writeAdmission" | "authorizeFinalization"> & { scope: "production" },
+) {
+  if (options.scope !== "production") throw new JpydfSdkError("UNSUPPORTED_DEPLOYMENT", "Production scope required");
+  const { host: _, ...readOnly } = createAgentClient(options);
+  return Object.freeze(readOnly);
+}
+
 function createAgentClient(options: AgentClientOptions) {
-  if (options.scope === "mainnet-staging" && (options.writeAdmission !== undefined || options.authorizeFinalization !== undefined)) {
-    throw new JpydfSdkError("POLICY_VIOLATION", "mainnet-staging agent sessions are read-only");
+  if ((options.scope === "mainnet-staging" || options.scope === "production")
+    && (options.writeAdmission !== undefined || options.authorizeFinalization !== undefined)) {
+    throw new JpydfSdkError("POLICY_VIOLATION", `${options.scope} agent sessions are read-only`);
   }
   options = Object.freeze({ ...options });
   assertJpydfDeadlinePublicClient(options.publicClient);
@@ -418,7 +459,7 @@ function createAgentClient(options: AgentClientOptions) {
   const identity = Object.freeze(
     {
       environment: options.deployment.deploymentScope,
-      testOnly: true,
+      testOnly: options.deployment.deploymentScope !== "production",
       chainId: options.deployment.chainId,
       deploymentClassification: options.deployment.deploymentClassification,
       deploymentId: options.deployment.deploymentId,
@@ -426,8 +467,10 @@ function createAgentClient(options: AgentClientOptions) {
       actor,
     } as const,
   );
+  const marketAvailable = options.deployment.deploymentScope === "production";
   const operationCatalog = Object.freeze(AGENT_OPERATION_CATALOG.filter(({ id, kind }) => (
-    kind === "read" || admission?.allowedOperations.has(id as JpydfAgentWriteOperation)
+    (marketAvailable || !id.startsWith("jpydfUsdc.")) && (
+    kind === "read" || admission?.allowedOperations.has(id as JpydfAgentWriteOperation))
   )));
   // ponytail: process-local with a short TTL; use signed persistent intents if restart survival is required.
   const references = new Map<string, {
@@ -582,7 +625,10 @@ function createAgentClient(options: AgentClientOptions) {
       const allowedInputKeys = operationId === "integration.get"
         || operationId === "protocol.get"
         || operationId === "account.get"
+        || operationId === "jpydfUsdc.pool"
         ? []
+        : operationId === "jpydfUsdc.quote"
+        ? ["tokenIn", "amountRaw"]
         : operationId === "market.get"
         ? ["branchId"]
         : operationId === "liquidation.scan"
@@ -605,6 +651,16 @@ function createAgentClient(options: AgentClientOptions) {
           return client.getAccount(actor);
         case "market.get":
           return client.getMarket({ branchId: branchId(requestInput.branchId) });
+        case "jpydfUsdc.pool":
+          return getJpydfUsdcPool({ publicClient: options.publicClient as PublicClient, deployment: options.deployment });
+        case "jpydfUsdc.quote": {
+          const tokenIn = requestInput.tokenIn;
+          if (tokenIn !== "USDC" && tokenIn !== "JPYdf") throw new JpydfSdkError("INVALID_INPUT", "tokenIn must be USDC or JPYdf");
+          if (typeof requestInput.amountRaw !== "string" || !/^[1-9][0-9]{0,38}$/.test(requestInput.amountRaw)) {
+            throw new JpydfSdkError("INVALID_INPUT", "amountRaw must be a positive base-unit integer string");
+          }
+          return quoteJpydfUsdc({ publicClient: options.publicClient as PublicClient, deployment: options.deployment, tokenIn, amountInRaw: BigInt(requestInput.amountRaw) });
+        }
         case "liquidation.scan": {
           if (
             !Number.isSafeInteger(requestInput.maxIterations)

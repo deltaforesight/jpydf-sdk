@@ -73,3 +73,5 @@ MCPサーバーを再起動し、`integration.get`を`{}`で呼び出します�
 操作の失敗は`isError: true`とSDKの`error.code`で確認できます。`INVALID_INPUT`では入力を修正します。再試行できる応答は`retryable`と`retryAfterMs`を確認し、有限の回数・時間内で待ってから再試行します。接続例自体は自動再試行しません。
 
 問い合わせにはNode・依存バージョン、`verification.json`のsource commit、操作名、error codeを添えてください。RPC credentialや設定ファイルを貼り付けないでください。清算候補の読み取りは実行の承認になりません。署名・broadcast・write操作はこのMCP接続例で提供しません。
+
+`JPYDF_MODE=production`は、検証済みの公開descriptorからread-onlyのsessionを起動します。`JPYDF_MANIFEST_PATH`に`descriptors/jpydf-production.json`を指定します。read操作だけを公開し、`testOnly: false`を返します。

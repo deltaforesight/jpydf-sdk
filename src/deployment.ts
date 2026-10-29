@@ -1,7 +1,7 @@
 import { type Address, getAddress, isAddress, zeroAddress } from "viem";
 
 import { JpydfSdkError } from "./errors.js";
-import type { JpydfBranchDeployment, JpydfDeployment } from "./types.js";
+import type { JpydfBranchDeployment, JpydfDeployment, JpydfProductionMarket } from "./types.js";
 
 export const MAINNET_CANARY_IDENTITY = Object.freeze(
   {
@@ -220,4 +220,78 @@ export function assertVerifiedDeployment(deployment: JpydfDeployment): void {
       "deployment must come from a package-pinned deployment loader",
     );
   }
+}
+
+// SHA-256 of descriptors/jpydf-production.json (verified against mainnet by verify-production-descriptor.mjs).
+// The package pins only this hash; callers supply the exact descriptor bytes.
+export const PRODUCTION_DESCRIPTOR_SHA256 = "2572c2c1a48eb0892da2056d706b7c57ba34576892825c49f8602e42d727c679";
+const productionMarkets = new WeakMap<JpydfDeployment, JpydfProductionMarket>();
+
+export async function loadProductionDeployment(input: { descriptorJson: string }): Promise<JpydfDeployment> {
+  if (typeof input?.descriptorJson !== "string" || input.descriptorJson.length === 0) {
+    throw new JpydfSdkError("INVALID_INPUT", "descriptorJson must be a non-empty string");
+  }
+  if (await sha256Text(input.descriptorJson) !== PRODUCTION_DESCRIPTOR_SHA256) {
+    throw new JpydfSdkError("MANIFEST_MISMATCH", "The production descriptor SHA-256 does not match the package-pinned descriptor");
+  }
+  const d = record(JSON.parse(input.descriptorJson), "descriptor");
+  equal(d.kind, "jpydf-public-deployment-descriptor", "kind");
+  equal(d.chainId, 1, "chainId");
+  const constants = record(d.protocolConstants, "protocolConstants");
+  if (!Array.isArray(d.branches) || d.branches.length !== PUBLIC_BRANCH_SYMBOLS.length) {
+    throw new JpydfSdkError("UNSUPPORTED_DEPLOYMENT", "Production descriptor must contain the public branches");
+  }
+  const branchList = d.branches;
+  const branches: JpydfBranchDeployment[] = PUBLIC_BRANCH_SYMBOLS.map((collSymbol, branchId) => {
+    const b = record(branchList[branchId], `branches[${branchId}]`);
+    equal(b.branchId, branchId, `branches[${branchId}].branchId`);
+    equal(b.collSymbol, collSymbol, `branches[${branchId}].collSymbol`);
+    const field = (name: string) => address(b[name], `branches[${branchId}].${name}`);
+    return Object.freeze({
+      activePool: field("activePool"), branchId, borrowerOperations: field("borrowerOperations"), collSymbol,
+      collateralVault: field("collateralVault"), collateralYieldZapper: field("collateralYieldZapper"),
+      dToken: field("dToken"), dTokenDecimals: 18, jpyUsdRateProvider: field("jpyUsdRateProvider"),
+      priceFeed: field("priceFeed"), sortedTroves: field("sortedTroves"), stabilityPool: field("stabilityPool"),
+      troveManager: field("troveManager"), underlyingToken: field("underlyingToken"),
+    } as const);
+  });
+  const deployment = Object.freeze({
+    chainId: 1,
+    deploymentClassification: String(d.deploymentClassification),
+    deploymentProfile: String(d.deploymentProfile),
+    deploymentId: String(d.deploymentId),
+    deploymentScope: "production",
+    hintHelpers: address(d.hintHelpers, "hintHelpers"),
+    manifestSha256: String(d.sourceManifestSha256),
+    jpydfToken: address(d.jpydfToken, "jpydfToken"),
+    liquidationCandidateGetter: address(d.liquidationCandidateGetter, "liquidationCandidateGetter"),
+    protocolConstants: Object.freeze({
+      ethGasCompensationRaw: BigInt(String(constants.ethGasCompensation)),
+      maxAnnualInterestRateRaw: BigInt(String(constants.maxAnnualInterestRate)),
+      minAnnualInterestRateRaw: BigInt(String(constants.minAnnualInterestRate)),
+      minDebtRaw: BigInt(String(constants.minDebt)),
+      stabilityPoolYieldShareRaw: BigInt(String(constants.stabilityPoolYieldShare)),
+    }),
+    branches: Object.freeze(branches),
+  }) as JpydfDeployment;
+  const uni = record(d.uniswapV4, "uniswapV4");
+  const key = record(uni.poolKey, "uniswapV4.poolKey");
+  const poolKey = Object.freeze({
+    currency0: address(key.currency0, "poolKey.currency0"), currency1: address(key.currency1, "poolKey.currency1"),
+    fee: Number(key.fee), tickSpacing: Number(key.tickSpacing), hooks: address(key.hooks, "poolKey.hooks", true),
+  });
+  const usdc = poolKey.currency0 === deployment.jpydfToken ? poolKey.currency1 : poolKey.currency0;
+  productionMarkets.set(deployment, Object.freeze({
+    poolId: String(uni.poolId) as `0x${string}`, poolKey, usdc,
+    quoter: address(uni.quoter, "uniswapV4.quoter"), stateView: address(uni.stateView, "uniswapV4.stateView"),
+  }));
+  verifiedDeployments.add(deployment);
+  return deployment;
+}
+
+export function productionMarketOf(deployment: JpydfDeployment): JpydfProductionMarket {
+  assertVerifiedDeployment(deployment);
+  const market = productionMarkets.get(deployment);
+  if (!market) throw new JpydfSdkError("UNSUPPORTED_DEPLOYMENT", "The JPYdf/USDC market is only available for the production deployment");
+  return market;
 }

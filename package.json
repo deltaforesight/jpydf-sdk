@@ -1,8 +1,7 @@
 {
   "name": "@jpydf/sdk",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0",
   "description": "Headless TypeScript SDK for JPYdf market reads and Stability Pool transaction preparation",
-  "private": true,
   "license": "MIT",
   "type": "module",
   "sideEffects": false,

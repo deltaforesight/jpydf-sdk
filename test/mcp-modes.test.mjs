@@ -63,7 +63,7 @@ test("combined catalogs route each allowed operation and never delegate writes",
 });
 
 test("unknown and incomplete chain modes fail with sanitized startup errors", () => {
-  for (const mode of ["invalid-secret-mode", "mainnet-canary", "mainnet-staging"]) {
+  for (const mode of ["invalid-secret-mode", "mainnet-canary", "mainnet-staging", "production"]) {
     const result = spawnSync(process.execPath, [entry], { env: { JPYDF_MODE: mode }, encoding: "utf8", timeout: 5_000 });
     assert.equal(result.status, 1);
     assert.equal(result.stdout, "");

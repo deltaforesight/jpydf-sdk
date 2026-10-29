@@ -29,7 +29,7 @@ file outside the repository with the following variables:
 
 | Variable | Trusted startup value |
 | --- | --- |
-| `JPYDF_MODE` | `mainnet-staging` or `mainnet-canary` (default when omitted) |
+| `JPYDF_MODE` | `production`, `mainnet-staging` or `mainnet-canary` (default when omitted) |
 | `JPYDF_MANIFEST_PATH` | Absolute path to the exact access-controlled manifest for that mode |
 | `JPYDF_RPC_URL` | Operator-approved Ethereum mainnet HTTPS RPC endpoint |
 | `JPYDF_ACCOUNT` | Address assigned to this local user's session; no private key |
@@ -156,3 +156,5 @@ be verified through the compatibility runner; passing SDK unit tests alone is
 not evidence of either. No wallet or live RPC credentials are needed. For connection failures, first check the
 local paths, build output, and SDK manifest pin; never paste credentials into
 an issue or chat.
+
+`JPYDF_MODE=production` starts a read-only session from the verified public descriptor: set `JPYDF_MANIFEST_PATH` to `descriptors/jpydf-production.json`. It exposes only read operations and reports `testOnly: false`.

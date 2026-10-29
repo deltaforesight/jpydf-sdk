@@ -5,25 +5,20 @@ transaction preparation. The root SDK requires Node 22+ or a browser with Web
 Crypto. The `/agent` host entrypoint is Node 22+ only because it uses Node's
 killable HTTPS request boundary. `viem` is the only peer dependency.
 
-This test-only alpha supports separately pinned Ethereum mainnet canary and
-read-only mainnet staging deployments, plus offline LP simulation. Both chain
-deployments are `TEST_ONLY_NOT_FOR_PRODUCTION`; the package therefore remains
-`private: true` and contains no deployment address or RPC URL. Install the
-reviewed tarball with `viem` for internal development. Third-party trials use a
-reviewed standalone bundle for offline simulation, read-only staging and local MCP.
-The bundle must have a tested dependency lock, source identity and file hashes,
-English/Japanese instructions, a reachable support contact, and an agreed staging
-manifest handoff. Canary remains access-controlled internal testing. After the production release gates
-pass, the public command will be:
+This 0.x public preview supports the read-only production scope loaded from the
+public production descriptor, plus offline LP simulation. The separately pinned
+mainnet canary and staging deployments remain `TEST_ONLY_NOT_FOR_PRODUCTION` for
+internal testing. The package contains no deployment address or RPC URL. It is
+published to the npm `preview` tag, not `latest`:
 
 ```sh
-npm install @jpydf/sdk viem
+npm install @jpydf/sdk@preview viem
 ```
 
 ## Production descriptor
 
 `descriptors/jpydf-production.json` is the sanitized public production descriptor
-(SDK-GOV-002 §1). It is outside the package tarball and is not loaded by the SDK yet.
+(SDK-GOV-002 §1). It is outside the package tarball. `loadProductionDeployment({ descriptorJson })` accepts only its exact bytes (the package pins the SHA-256), and the `production` scope is read-only: market and account reads plus `getJpydfUsdcPool` / `quoteJpydfUsdc`, with no transaction preparation (SDK-FR-007).
 Rebuild it only from the reviewed production manifest and verify it against mainnet:
 
 ```sh
@@ -36,8 +31,8 @@ RPC_URLS="$RPC_A,$RPC_B" node scripts/verify-production-descriptor.mjs
 The generated `deltaforesight/jpydf-sdk` repository builds and tests with
 `npm ci && npm test`. It includes the generated bindings and a dependency lock.
 Its `.github/workflows/publish.yml` publishes exact `v0.x` tags to the npm
-`preview` tag with trusted publishing, provenance, and human approval, and
-refuses while the package is still `private`.
+`preview` tag with trusted publishing, provenance, and human approval. The
+published file is the tarball that passed the minimum / current viem matrix.
 
 ## Security and support
 

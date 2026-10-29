@@ -1,6 +1,6 @@
 import type { Address, Hex, PublicClient } from "viem";
 
-export type JpydfDeploymentScope = "mainnet-canary" | "mainnet-staging";
+export type JpydfDeploymentScope = "mainnet-canary" | "mainnet-staging" | "production";
 
 declare const verifiedDeploymentBrand: unique symbol;
 
@@ -42,6 +42,23 @@ export type JpydfDeployment = {
   readonly liquidationCandidateGetter: Address;
   readonly manifestSha256: string;
   readonly protocolConstants: JpydfProtocolConstants;
+};
+
+export type JpydfPoolKey = {
+  readonly currency0: Address;
+  readonly currency1: Address;
+  readonly fee: number;
+  readonly tickSpacing: number;
+  readonly hooks: Address;
+};
+
+// The verified JPYdf/USDC Uniswap v4 market of the production descriptor.
+export type JpydfProductionMarket = {
+  readonly poolId: Hex;
+  readonly poolKey: JpydfPoolKey;
+  readonly quoter: Address;
+  readonly stateView: Address;
+  readonly usdc: Address;
 };
 
 export type JpydfClientOptions = {

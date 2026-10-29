@@ -16,11 +16,12 @@ export function createReadOnlyMcpServer(...models) {
     throw new Error("Duplicate MCP operation");
   }
   const server = new Server(
-    { name: "jpydf-read-only", version: "0.1.0-alpha.0" },
+    { name: "jpydf-read-only", version: "0.1.0" },
     {
       capabilities: { tools: {} },
-      instructions: "Internal alpha, TEST_ONLY_NOT_FOR_PRODUCTION. Chain sessions start with integration.get. Offline lp.simulate uses supplied prices, never live data. "
+      instructions: "Internal alpha. Chain sessions start with integration.get: testOnly=true deployments are TEST_ONLY_NOT_FOR_PRODUCTION, testOnly=false is the read-only production deployment. Offline lp.simulate uses supplied prices, never live data. "
         + "Chain amounts are base-unit decimal strings; LP inputs are decimal strings in the named human units. Report the returned deployment and block identity for chain reads. "
+        + "jpydfUsdc.pool and jpydfUsdc.quote report the JPYdf market price and an execution quote; never present either as a fixed ¥1 price or a guaranteed fill. "
         + "liquidation.scan is discovery only: never enqueue or trigger execution. "
         + "For pagination, set a finite page budget, reject repeated cursors, deduplicate branchId/troveId, "
         + "and report incomplete scans. Pages may observe different blocks. "

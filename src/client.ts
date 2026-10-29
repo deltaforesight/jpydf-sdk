@@ -63,6 +63,12 @@ export const MAINNET_STAGING_SDK_CAPABILITIES = Object.freeze({
   uniswapV4WalletSmoke: Object.freeze({ quote: false, unsignedCalldata: false, broadcast: false } as const),
 });
 
+// Production is read-only: market/account reads and JPYdf/USDC quotes; no transaction preparation.
+export const PRODUCTION_SDK_CAPABILITIES = Object.freeze({
+  ...MAINNET_STAGING_SDK_CAPABILITIES,
+  swap: Object.freeze({ available: "quote-only", reason: "NO_TRANSACTION_PREPARATION" } as const),
+});
+
 type PreparedActionInternal = Omit<ReadyAction, "requiresRevalidation" | "status"> & {
   reference: PreparedActionReference;
 };
@@ -131,18 +137,19 @@ function simulationFailure(revert: ContractFunctionRevertedError, label: string)
 
 export function createJpydfClient(options: JpydfClientOptions) {
   const { deployment, publicClient, scope } = options;
-  if (scope !== "mainnet-canary" && scope !== "mainnet-staging") {
-    throw new JpydfSdkError("TEST_ONLY_SCOPE_REQUIRED", "scope must name a supported test deployment");
+  if (scope !== "mainnet-canary" && scope !== "mainnet-staging" && scope !== "production") {
+    throw new JpydfSdkError("TEST_ONLY_SCOPE_REQUIRED", "scope must name a supported deployment");
   }
   assertVerifiedDeployment(deployment);
   if (scope !== deployment.deploymentScope) {
     throw new JpydfSdkError("UNSUPPORTED_DEPLOYMENT", "scope does not match the verified deployment");
   }
   const capabilities = scope === "mainnet-canary"
-    ? MAINNET_CANARY_SDK_CAPABILITIES : MAINNET_STAGING_SDK_CAPABILITIES;
+    ? MAINNET_CANARY_SDK_CAPABILITIES
+    : scope === "production" ? PRODUCTION_SDK_CAPABILITIES : MAINNET_STAGING_SDK_CAPABILITIES;
   function assertPreparationAllowed(): void {
     if (scope !== "mainnet-canary") {
-      throw new JpydfSdkError("POLICY_VIOLATION", "Transaction preparation is unavailable for mainnet-staging");
+      throw new JpydfSdkError("POLICY_VIOLATION", `Transaction preparation is unavailable for ${scope}`);
     }
   }
 

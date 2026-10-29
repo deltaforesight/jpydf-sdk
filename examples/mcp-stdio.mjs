@@ -3,12 +3,14 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   loadMainnetCanaryDeployment,
   loadMainnetStagingDeployment,
+  loadProductionDeployment,
 } from "@jpydf/sdk";
 import {
   createJpydfLpSimulationModel,
   createJpydfMainnetCanaryAgentClient,
   createJpydfMainnetStagingAgentClient,
   createJpydfMainnetRpcClient,
+  createJpydfProductionAgentClient,
 } from "@jpydf/sdk/agent";
 import { createReadOnlyMcpServer } from "./mcp-server.mjs";
 
@@ -17,14 +19,17 @@ try {
   const { JPYDF_MODE = "mainnet-canary", JPYDF_MANIFEST_PATH, JPYDF_RPC_URL, JPYDF_ACCOUNT } = process.env;
   const models = [createJpydfLpSimulationModel()];
   if (JPYDF_MODE !== "offline") {
-    if (!(["mainnet-canary", "mainnet-staging"].includes(JPYDF_MODE))
+    if (!(["mainnet-canary", "mainnet-staging", "production"].includes(JPYDF_MODE))
       || !JPYDF_MANIFEST_PATH || !JPYDF_RPC_URL || !JPYDF_ACCOUNT) {
       throw new Error("Invalid startup configuration");
     }
-    const staging = JPYDF_MODE === "mainnet-staging";
-    const loadDeployment = staging ? loadMainnetStagingDeployment : loadMainnetCanaryDeployment;
-    const createSession = staging ? createJpydfMainnetStagingAgentClient : createJpydfMainnetCanaryAgentClient;
-    const deployment = await loadDeployment({ manifestJson: await readFile(JPYDF_MANIFEST_PATH, "utf8") });
+    // production reads the verified public descriptor (JPYDF_MANIFEST_PATH points at descriptors/jpydf-production.json).
+    const text = await readFile(JPYDF_MANIFEST_PATH, "utf8");
+    const deployment = JPYDF_MODE === "production" ? await loadProductionDeployment({ descriptorJson: text })
+      : JPYDF_MODE === "mainnet-staging" ? await loadMainnetStagingDeployment({ manifestJson: text })
+      : await loadMainnetCanaryDeployment({ manifestJson: text });
+    const createSession = JPYDF_MODE === "production" ? createJpydfProductionAgentClient
+      : JPYDF_MODE === "mainnet-staging" ? createJpydfMainnetStagingAgentClient : createJpydfMainnetCanaryAgentClient;
     const session = createSession({
       deployment, scope: JPYDF_MODE, account: JPYDF_ACCOUNT,
       publicClient: createJpydfMainnetRpcClient({ rpcUrl: JPYDF_RPC_URL }),

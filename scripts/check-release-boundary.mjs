@@ -27,6 +27,8 @@ const expectedDist = new Set([
   "index.js",
   "mainnet-canary-univ4.d.ts",
   "mainnet-canary-univ4.js",
+  "production-market.d.ts",
+  "production-market.js",
   "rpc.d.ts",
   "rpc.js",
   "types.d.ts",
@@ -63,8 +65,9 @@ if (urls.some((url) => !allowedUrls.has(url))) {
 }
 
 const packageJson = JSON.parse(readFileSync(resolve(packageDir, "package.json"), "utf8"));
-if (packageJson.private !== true || packageJson.license !== "MIT") {
-  throw new Error("SDK internal alpha must remain private and MIT-licensed");
+// SDK-GOV-002 is met for the 0.x public preview; publish.yml still refuses non-0.x versions.
+if (packageJson.private !== undefined || packageJson.license !== "MIT" || !/^0\.\d+\.\d+$/.test(packageJson.version)) {
+  throw new Error("SDK public preview must be a non-private, MIT-licensed 0.x release");
 }
 if (
   packageJson.type !== "module"

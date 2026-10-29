@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import https from "node:https";
@@ -15,6 +16,7 @@ import {
 import {
   createJpydfMainnetCanaryAgentClient,
   createJpydfMainnetStagingAgentClient,
+  createJpydfProductionAgentClient,
   createJpydfMainnetRpcClient,
   getJpydfRpcHealth,
   JPYDF_RPC_PHYSICAL_LIMIT,
@@ -26,6 +28,7 @@ import {
   JpydfSdkError,
   loadMainnetCanaryDeployment,
   loadMainnetStagingDeployment,
+  loadProductionDeployment,
   loadMainnetCanaryUniV4Route,
   MAINNET_CANARY_IDENTITY,
   MAINNET_STAGING_IDENTITY,
@@ -766,8 +769,13 @@ test("loads only the package-pinned mainnet-canary manifest", async () => {
 
 test("requires the exact scope and a loader-verified deployment", () => {
   assert.throws(
-    () => createJpydfClient({ publicClient: mockPublicClient(), deployment, scope: "production" }),
+    () => createJpydfClient({ publicClient: mockPublicClient(), deployment, scope: "mainnet" }),
     (error) => error instanceof JpydfSdkError && error.code === "TEST_ONLY_SCOPE_REQUIRED",
+  );
+  // A canary deployment cannot be reused as production.
+  assert.throws(
+    () => createJpydfClient({ publicClient: mockPublicClient(), deployment, scope: "production" }),
+    (error) => error instanceof JpydfSdkError && error.code === "UNSUPPORTED_DEPLOYMENT",
   );
   assert.throws(
     () =>
@@ -845,6 +853,32 @@ test("staging root reads retain staging identity and every preparation path reje
   assert.equal(sdk().capabilities.uniswapV4WalletSmoke.unsignedCalldata, true);
 });
 
+test("production agent exposes only reads, is not test-only and cannot acquire host authority", async () => {
+  const productionDeployment = await loadProductionDeployment({
+    descriptorJson: readFileSync(new URL("../descriptors/jpydf-production.json", import.meta.url), "utf8"),
+  });
+  const options = { publicClient: createAgentRpcHarness().publicClient, deployment: productionDeployment, scope: "production", account: ACCOUNT };
+  const session = createJpydfProductionAgentClient(options);
+  assert.equal(Object.hasOwn(session, "host"), false);
+  assert.equal(session.testOnly, false);
+  assert.ok(session.model.operationCatalog.every(({ kind }) => kind === "read"));
+  const result = await session.model.invoke({ operation: "integration.get", input: {} });
+  assert.equal(result.ok, true);
+  assert.equal(result.environment, "production");
+  assert.equal(result.testOnly, false);
+  assert.deepEqual(result.data.capabilities.swap, { available: "quote-only", reason: "NO_TRANSACTION_PREPARATION" });
+  const denied = await session.model.invoke({ operation: "earn.deposit", input: { branchId: 0, amountRaw: "1", claim: true } });
+  assert.equal(denied.ok, false);
+  const ids = session.model.operationCatalog.map(({ id }) => id);
+  assert.ok(ids.includes("jpydfUsdc.pool") && ids.includes("jpydfUsdc.quote"));
+  for (const input of [{ tokenIn: "ETH", amountRaw: "1" }, { tokenIn: "USDC", amountRaw: "0" }, { tokenIn: "USDC" }]) {
+    const rejected = await session.model.invoke({ operation: "jpydfUsdc.quote", input });
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.error.code, "INVALID_INPUT");
+  }
+  assert.throws(() => createJpydfProductionAgentClient({ ...options, deployment: stagingDeployment }), (error) => error.code === "UNSUPPORTED_DEPLOYMENT");
+});
+
 test("staging agent exposes only reads and cannot acquire canary host authority", async () => {
   const options = {
     publicClient: createAgentRpcHarness().publicClient,
@@ -855,6 +889,11 @@ test("staging agent exposes only reads and cannot acquire canary host authority"
   const session = createJpydfMainnetStagingAgentClient(options);
   assert.equal(Object.hasOwn(session, "host"), false);
   assert.equal(session.testOnly, true);
+  // The JPYdf/USDC market exists only for the production deployment.
+  assert.ok(!session.model.operationCatalog.some(({ id }) => id.startsWith("jpydfUsdc.")));
+  const noMarket = await session.model.invoke({ operation: "jpydfUsdc.pool", input: {} });
+  assert.equal(noMarket.ok, false);
+  assert.equal(noMarket.error.code, "UNSUPPORTED_DEPLOYMENT");
   assert.ok(session.model.operationCatalog.every(({ kind }) => kind === "read"));
   const result = await session.model.invoke({ operation: "integration.get", input: {} });
   assert.equal(result.ok, true);
