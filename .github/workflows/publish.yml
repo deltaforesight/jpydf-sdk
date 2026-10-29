@@ -103,7 +103,7 @@ jobs:
           name: release-tarball
           path: release
 
-      - name: Publish the checked tarball as a preview
+      - name: Publish the checked tarball
         env:
           # npm tries OIDC first; the token is only used before trusted publishing exists.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
@@ -114,4 +114,4 @@ jobs:
           set -euo pipefail
           echo "$EXPECTED_SHA256  $TARBALL" | sha256sum -c -
           npm install -g npm@11
-          npm publish "$TARBALL" --provenance --access public --tag preview
+          npm publish "$TARBALL" --provenance --access public

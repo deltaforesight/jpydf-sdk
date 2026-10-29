@@ -14,8 +14,8 @@ and potential impact. Use a minimal proof of concept that does not put user fund
 or data at risk. Never include private keys, seed phrases, access tokens, or
 other credentials.
 
-The SDK is a 0.x preview published under the npm `preview` tag. Review focuses on
-the latest preview; there is no stable release or maintenance commitment for older
+The SDK is a 0.x preview. Review focuses on the latest
+version; there is no stable release or maintenance commitment for older
 0.x versions.
 This policy does not establish a bug bounty or promise a reward.
 

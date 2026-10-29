@@ -8,11 +8,11 @@ killable HTTPS request boundary. `viem` is the only peer dependency.
 This 0.x public preview supports the read-only production scope loaded from the
 public production descriptor, plus offline LP simulation. The separately pinned
 mainnet canary and staging deployments remain `TEST_ONLY_NOT_FOR_PRODUCTION` for
-internal testing. The package contains no deployment address or RPC URL. It is
-published to the npm `preview` tag, not `latest`:
+internal testing. The package contains no deployment address or RPC URL. Install
+it with `viem`:
 
 ```sh
-npm install @jpydf/sdk@preview viem
+npm install @jpydf/sdk viem
 ```
 
 ## Production descriptor
@@ -31,7 +31,7 @@ RPC_URLS="$RPC_A,$RPC_B" node scripts/verify-production-descriptor.mjs
 The generated `deltaforesight/jpydf-sdk` repository builds and tests with
 `npm ci && npm test`. It includes the generated bindings and a dependency lock.
 Its `.github/workflows/publish.yml` publishes exact `v0.x` tags to the npm
-`preview` tag with trusted publishing, provenance, and human approval. The
+`latest` tag with trusted publishing, provenance, and human approval. The
 published file is the tarball that passed the minimum / current viem matrix.
 
 ## Security and support
