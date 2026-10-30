@@ -1,15 +1,24 @@
 # Connect a local AI client to JPYdf
 
-This local example exposes offline LP simulation and SDK reads through
-MCP over stdio. It is a `TEST_ONLY_NOT_FOR_PRODUCTION` alpha for local trials. Chain reads
-use separately pinned, access-controlled mainnet canary or staging manifests.
+This local alpha example exposes offline LP simulation and SDK reads through
+MCP over stdio. Production mode reads through the public production descriptor;
+the `TEST_ONLY_NOT_FOR_PRODUCTION` canary and staging modes use separately
+pinned, access-controlled manifests.
 
 For Japanese instructions, see [日本語の接続手順](README.jp.md).
 
 ## Start the read-only server
 
-Use Node 22+ for this example and the SDK.
-For a source checkout, run from the repository root:
+Use Node 22+ for this example and the SDK. To run it from a source checkout,
+build the SDK from the repository root. In the public `deltaforesight/jpydf-sdk`
+repository:
+
+```sh
+npm ci
+npm run build
+```
+
+In the monorepo:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -30,7 +39,7 @@ file outside the repository with the following variables:
 | Variable | Trusted startup value |
 | --- | --- |
 | `JPYDF_MODE` | `production`, `mainnet-staging` or `mainnet-canary` (default when omitted) |
-| `JPYDF_MANIFEST_PATH` | Absolute path to the exact access-controlled manifest for that mode |
+| `JPYDF_MANIFEST_PATH` | Absolute path to the unmodified file for that mode: `descriptors/jpydf-production.json` from the SDK source repository for `production`, or the access-controlled manifest for staging or canary |
 | `JPYDF_RPC_URL` | Operator-approved Ethereum mainnet HTTPS RPC endpoint |
 | `JPYDF_ACCOUNT` | Address assigned to this local user's session; no private key |
 
@@ -72,8 +81,14 @@ account, or `market.get` with `{"branchId":1}`. For a liquidation discovery page
 {"name":"liquidation.scan","arguments":{"branchId":1,"maxIterations":32,"startId":"0"}}
 ```
 
-Chain results include the SDK's `testOnly`, deployment identity, and raw decimal-string
-amounts. Preserve the block identity returned with market and liquidation data.
+Production sessions also list `jpydfUsdc.pool`, which reads the JPYdf/USDC
+Uniswap v4 pool, and `jpydfUsdc.quote`, which quotes an exact-input swap. The pool
+price is the JPYdf market price and can differ from the ¥1 reference; a quote is
+not a guaranteed fill.
+
+Chain results include the SDK's `testOnly` flag (`false` only in production),
+deployment identity, and raw decimal-string amounts. Preserve the block identity
+returned with market and liquidation data.
 Both MCP text and `structuredContent` carry the same SDK response. A failed SDK
 operation sets `isError: true`; branch on `error.code`, `retryable`, and
 `retryAfterMs`, not the message. The adapter neither retries nor paginates.
@@ -128,19 +143,28 @@ Source examples are excluded from the SDK tarball. Third-party trials use a revi
 standalone bundle with its own startup and dependency checks. Ask the bundle
 provider for the trial support contact and the approved staging manifest handoff;
 chain configuration is delivered separately. Canary is internal testing only.
-Production and npm publication require the SDK release gate.
-A separately Verified production descriptor and reviewed public distribution
-must precede a production MCP service. Passing a site-readiness scanner does
-not satisfy those conditions.
+Passing a site-readiness scanner does not satisfy the requirements for a hosted
+service.
 
 ## Verify the connection
 
-In a source checkout:
+In the public SDK repository, `npm test` builds the package and runs the unit
+tests and the release-boundary check. The compatibility runner then checks the
+packed tarball; set `JPYDF_SDK_VIEM` to `2.31.4` (minimum) or `2` (current):
+
+```sh
+npm test
+dir="$(mktemp -d)"
+tarball="$(npm pack --ignore-scripts --pack-destination "$dir")"
+JPYDF_SDK_TARBALL="$dir/$tarball" JPYDF_SDK_VIEM=2 node scripts/check-compatibility.mjs
+```
+
+In the monorepo:
 
 ```sh
 pnpm --filter @jpydf/sdk test
 pnpm --filter @jpydf/sdk test:release-boundary
-pnpm --filter @jpydf/sdk test:compatibility
+JPYDF_SDK_VIEM=2 pnpm --filter @jpydf/sdk test:compatibility
 ```
 
 In an extracted controlled bundle, run `node --test test/mcp-modes.test.mjs`
@@ -156,5 +180,3 @@ be verified through the compatibility runner; passing SDK unit tests alone is
 not evidence of either. No wallet or live RPC credentials are needed. For connection failures, first check the
 local paths, build output, and SDK manifest pin; never paste credentials into
 an issue or chat.
-
-`JPYDF_MODE=production` starts a read-only session from the verified public descriptor: set `JPYDF_MANIFEST_PATH` to `descriptors/jpydf-production.json`. It exposes only read operations and reports `testOnly: false`.

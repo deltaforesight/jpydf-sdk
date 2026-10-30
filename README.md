@@ -215,13 +215,12 @@ no deployment manifest, RPC, or wallet.
 ## Agent host flow
 
 For an MCP client, the source checkout includes a runnable read-only stdio server
-in `frontend/sdk/examples/mcp-stdio.mjs`, with setup in the adjacent `README.md`.
+in `examples/mcp-stdio.mjs`, with setup in the adjacent `README.md`.
 It exposes SDK read and offline simulation catalogs through the official MCP SDK
 and delegates input validation to this SDK. Offline mode needs no manifest or RPC;
-chain modes use separate canary and staging pins. These test-only
-examples are excluded from the tarball. External distribution needs a reviewed
-standalone bundle with the trial conditions above; production and npm release
-remain subject to the release gate below.
+production mode reads the public production descriptor, and canary and staging
+modes use their separate pins. These examples are excluded from the tarball.
+Third-party trial distribution needs a reviewed standalone bundle.
 
 Staging uses `loadMainnetStagingDeployment`, scope `"mainnet-staging"`, and
 `createJpydfMainnetStagingAgentClient`. It exposes reads only and no `.host`;
@@ -352,17 +351,18 @@ intended human recipient.
 
 ## Deployment and release boundary
 
-Each chain loader verifies its separate manifest SHA-256, test-only identity,
-chain ID 1, profile, deployment ID, CREATE2 salt, parameters, admin separation,
-and branch 0/1 allowlist. Canary retains its deliberately unwired product swap
-route; staging is read-only. Packing additionally
-requires the access-controlled manifest to be present and match the pin.
+The canary and staging loaders each verify their separate manifest SHA-256,
+test-only identity, chain ID 1, profile, deployment ID, CREATE2 salt, parameters,
+admin separation, and branch 0/1 allowlist. Canary retains its deliberately
+unwired product swap route; staging is read-only. Packing in the monorepo
+additionally requires the access-controlled canary manifest to be present and
+match the pin.
 
-A stable production preset and public npm release remain blocked until a fresh
-production deployment is Approved, Deployed, and Verified, independently read
-back on mainnet, and connected to verified external monitoring and alert
-delivery. The current canary artifact must not be renamed or reused as that
-production release.
+A stable 1.0 release requires a separate decision to freeze the public API and
+support window. Offering an agent host on the public production path requires
+verified physical RPC work bounds, recovery probes, external monitoring, and a
+test incident delivered to a human recipient. The canary identity must not be
+renamed or reused as a production preset, descriptor, or package.
 
 ## License
 

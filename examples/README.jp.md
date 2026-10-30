@@ -1,8 +1,8 @@
 # JPYdfをローカルのAIクライアントから試す
 
-この接続例では、MCPの標準入出力接続を使い、LP試算とstagingの読み取りを試せます。Node 22以上と、ローカルサーバー設定に対応したMCPクライアントを用意してください。初回はインストールと接続確認まで進め、chain設定とエラー対処は必要なときに参照してください。
+この接続例では、MCPの標準入出力接続を使い、LP試算と、本番またはstagingの読み取りを試せます。Node 22以上と、ローカルサーバー設定に対応したMCPクライアントを用意してください。初回はインストールと接続確認まで進め、chain設定とエラー対処は必要なときに参照してください。
 
-配布元に、試験利用の問い合わせ先とstaging manifestの提供方法を確認してください。manifest、RPC接続情報、利用者のaccount設定は配布セットとは別に受け取ります。本接続例は`TEST_ONLY_NOT_FOR_PRODUCTION`です。canaryはアクセス制限付きの内部検証に限ります。
+配布元に、試験利用の問い合わせ先とstaging manifestの提供方法を確認してください。manifest、RPC接続情報、利用者のaccount設定は配布セットとは別に受け取ります。stagingとcanaryは`TEST_ONLY_NOT_FOR_PRODUCTION`です。canaryはアクセス制限付きの内部検証に限ります。
 
 ## 配布セットをインストールする
 
@@ -13,7 +13,7 @@ npm ci --ignore-scripts --no-audit --no-fund
 node --test test/mcp-modes.test.mjs
 ```
 
-テストが成功すると、公式MCPクライアントからの起動、ツール一覧取得、LP試算、入力エラー、write操作の拒否を確認できます。これはオフライン接続の検証です。stagingの実チェーン読み取りは後述の設定で別途確認します。
+テストが成功すると、公式MCPクライアントからの起動、ツール一覧取得、LP試算、入力エラー、write操作の拒否を確認できます。これはオフライン接続の検証です。本番とstagingの実チェーン読み取りは後述の設定で別途確認します。
 
 ## オフラインでLP試算を呼び出す
 
@@ -51,18 +51,20 @@ node --test test/mcp-modes.test.mjs
 
 応答の`ok: true`と、`data.simulationOnly: true`、`data.liveData: false`を確認してください。試算はUSDCを1ドルとし、手数料・報酬・gas・リバランスを含みません。初期トークン量は整数の最小単位でも返し、将来価値は数値による概算を返します。rangeはtick単位に調整されるため、入力値と実効rangeが異なる場合があります。
 
-## stagingの読み取りに切り替える
+## 本番またはstagingの読み取りに切り替える
 
 設定ファイルを自分だけが読める権限にし、次の値を設定します。
 
 | 変数 | 値 |
 | --- | --- |
-| `JPYDF_MODE` | `mainnet-staging` |
-| `JPYDF_MANIFEST_PATH` | 配布元が提供したstaging manifestの絶対パス。内容を書き換えない |
+| `JPYDF_MODE` | 本番は`production`、stagingは`mainnet-staging` |
+| `JPYDF_MANIFEST_PATH` | 本番はSDKのsource repositoryにある`descriptors/jpydf-production.json`、stagingは配布元が提供したmanifestの絶対パス。どちらも内容を書き換えない |
 | `JPYDF_RPC_URL` | 運用者が承認したEthereum mainnetのHTTPS RPC URL |
 | `JPYDF_ACCOUNT` | この利用者に割り当てたアドレス。秘密鍵は不要 |
 
-MCPサーバーを再起動し、`integration.get`を`{}`で呼び出します。続いて`protocol.get`を`{}`、`market.get`を`{"branchId":1}`、`account.get`を`{}`で呼び出してください。応答のdeployment identityと`testOnly`を確認し、marketの観測block identityを保存します。LP試算は同じ接続から引き続き使えます。
+MCPサーバーを再起動し、`integration.get`を`{}`で呼び出します。続いて`protocol.get`を`{}`、`market.get`を`{"branchId":1}`、`account.get`を`{}`で呼び出してください。応答のdeployment identityと`testOnly`（本番は`false`、stagingは`true`）を確認し、marketの観測block identityを保存します。LP試算は同じ接続から引き続き使えます。
+
+本番では`jpydfUsdc.pool`と`jpydfUsdc.quote`も表示されます。それぞれJPYdf/USDCのUniswap v4プールの状態と、exact-inputの見積りを返します。プール価格はJPYdfの市場価格で、1円の参照目標と違うことがあります。見積りは約定価格の保証ではありません。
 
 起動設定はローカル運用者が管理し、modelへのpromptやtool引数に入れません。接続例は1プロセス・1利用者のローカル用途です。外部HTTPサーバーとして公開するには、別途認証・全体の処理上限・監視を設計し検証する必要があります。
 
@@ -73,5 +75,3 @@ MCPサーバーを再起動し、`integration.get`を`{}`で呼び出します�
 操作の失敗は`isError: true`とSDKの`error.code`で確認できます。`INVALID_INPUT`では入力を修正します。再試行できる応答は`retryable`と`retryAfterMs`を確認し、有限の回数・時間内で待ってから再試行します。接続例自体は自動再試行しません。
 
 問い合わせにはNode・依存バージョン、`verification.json`のsource commit、操作名、error codeを添えてください。RPC credentialや設定ファイルを貼り付けないでください。清算候補の読み取りは実行の承認になりません。署名・broadcast・write操作はこのMCP接続例で提供しません。
-
-`JPYDF_MODE=production`は、検証済みの公開descriptorからread-onlyのsessionを起動します。`JPYDF_MANIFEST_PATH`に`descriptors/jpydf-production.json`を指定します。read操作だけを公開し、`testOnly: false`を返します。
